@@ -38,7 +38,27 @@ dependencies:
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   path_provider: ^2.1.2
-  sensors_plus: ^4.0.2
+  
+  # Security and Authentication
+  local_auth: ^2.1.8
+  crypto: ^3.0.3
+  shared_preferences: ^2.2.2
+  
+  # State Management
+  provider: ^6.1.1
+  
+  # HTTP and API
+  http: ^1.1.2
+  dio: ^5.4.0
+  
+  # UI Enhancements
+  flutter_svg: ^2.0.9
+  cached_network_image: ^3.3.1
+  shimmer: ^3.0.0
+  
+  # Utilities
+  url_launcher: ^6.2.4
+  permission_handler: ^11.2.0
 
 dev_dependencies:
   flutter_test:

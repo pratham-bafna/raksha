@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:raksha/widgets/app_drawer.dart';
+import 'package:raksha/services/user_data_service.dart';
+import 'package:raksha/services/auth_service.dart';
+import 'package:raksha/models/account.dart';
 
 class AccountsScreen extends StatefulWidget {
   const AccountsScreen({super.key});
@@ -10,6 +13,16 @@ class AccountsScreen extends StatefulWidget {
 
 class _AccountsScreenState extends State<AccountsScreen> {
   bool _showDetails = false;
+  final UserDataService _userDataService = UserDataService();
+  final AuthService _authService = AuthService();
+  String? _currentUsername;
+
+  @override
+  void initState() {
+    super.initState();
+    final user = _authService.currentUser;
+    _currentUsername = user?.username;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +49,18 @@ class _AccountsScreenState extends State<AccountsScreen> {
   }
 
   Widget _buildAccountSummaryCard() {
+    if (_currentUsername == null) {
+      return const Card(
+        child: Padding(
+          padding: EdgeInsets.all(20),
+          child: Text('Loading account information...'),
+        ),
+      );
+    }
+
+    final account = _userDataService.getUserAccount(_currentUsername!);
+    final userName = _userDataService.getUserName(_currentUsername!);
+
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -46,14 +71,14 @@ class _AccountsScreenState extends State<AccountsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Savings Account',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF667EEA)),
+                Text(
+                  account.accountType,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF667EEA)),
                 ),
                 const SizedBox(height: 4),
-                const Text(
-                  'XXXX XXXX XXXX 1234',
-                  style: TextStyle(color: Colors.grey, fontSize: 13),
+                Text(
+                  account.maskedAccountNumber,
+                  style: const TextStyle(color: Colors.grey, fontSize: 13),
                 ),
                 const SizedBox(height: 16),
                 const Text(
@@ -63,14 +88,14 @@ class _AccountsScreenState extends State<AccountsScreen> {
                 const SizedBox(height: 4),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
-                  children: const [
+                  children: [
                     Text(
-                      '₹XX,XXX',
-                      style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF667EEA)),
+                      '₹${account.balance.toStringAsFixed(0)}',
+                      style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF667EEA)),
                     ),
                     Text(
-                      '.XX',
-                      style: TextStyle(fontSize: 18, color: Color(0xFF667EEA)),
+                      '.${(account.balance % 1 * 100).toInt().toString().padLeft(2, '0')}',
+                      style: const TextStyle(fontSize: 18, color: Color(0xFF667EEA)),
                     ),
                   ],
                 ),
@@ -98,7 +123,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                     ),
                   ],
                 ),
-                if (_showDetails) _buildAccountDetails(),
+                if (_showDetails) _buildAccountDetails(account, userName),
                 Row(
                   children: [
                     Expanded(
@@ -125,26 +150,27 @@ class _AccountsScreenState extends State<AccountsScreen> {
     );
   }
 
-  Widget _buildAccountDetails() {
+  Widget _buildAccountDetails(Account account, String userName) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          Divider(),
-          SizedBox(height: 8),
-          Text('Account Holders: John Doe', style: TextStyle(fontSize: 14)),
-          Text('Branch: Example Branch', style: TextStyle(fontSize: 14)),
-          Text('IFSC: ABCD0123456', style: TextStyle(fontSize: 14)),
-          Text('MMID: Generate', style: TextStyle(fontSize: 14, color: Color(0xFF667EEA))),
-          Text('Virtual Payment Address: Register', style: TextStyle(fontSize: 14, color: Color(0xFF667EEA))),
-          Text('Account Balance: ₹XX,XXX.XX', style: TextStyle(fontSize: 14)),
-          Text('Required Monthly Average Balance: ₹X,XXX.XX', style: TextStyle(fontSize: 14)),
-          Text('Uncleared Funds: ₹0.00', style: TextStyle(fontSize: 14)),
-          Text('Amount on Hold: ₹0.00', style: TextStyle(fontSize: 14)),
-          SizedBox(height: 8),
-          Text('Linked Cards:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-          Text('Primary Card: XXXX********1234', style: TextStyle(fontSize: 14)),
+        children: [
+          const Divider(),
+          const SizedBox(height: 8),
+          Text('Account Holders: $userName', style: const TextStyle(fontSize: 14)),
+          Text('Branch: ${account.branch}', style: const TextStyle(fontSize: 14)),
+          Text('IFSC: ${account.ifscCode}', style: const TextStyle(fontSize: 14)),
+          Text('MMID: Generate', style: const TextStyle(fontSize: 14, color: Color(0xFF667EEA))),
+          Text('Virtual Payment Address: Register', style: const TextStyle(fontSize: 14, color: Color(0xFF667EEA))),
+          Text('Account Balance: ${account.formattedBalance}', style: const TextStyle(fontSize: 14)),
+          Text('Available Balance: ${account.formattedAvailableBalance}', style: const TextStyle(fontSize: 14)),
+          Text('Required Monthly Average Balance: ₹5,000.00', style: const TextStyle(fontSize: 14)),
+          Text('Uncleared Funds: ₹0.00', style: const TextStyle(fontSize: 14)),
+          Text('Amount on Hold: ₹0.00', style: const TextStyle(fontSize: 14)),
+          const SizedBox(height: 8),
+          const Text('Linked Cards:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          Text('Primary Card: XXXX********${account.accountNumber.substring(account.accountNumber.length - 4)}', style: const TextStyle(fontSize: 14)),
         ],
       ),
     );

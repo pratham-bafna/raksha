@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:raksha/widgets/app_drawer.dart';
+import 'package:raksha/services/user_data_service.dart';
+import 'package:raksha/services/auth_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -10,6 +12,16 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
+  final UserDataService _userDataService = UserDataService();
+  final AuthService _authService = AuthService();
+  String? _currentUsername;
+
+  @override
+  void initState() {
+    super.initState();
+    final user = _authService.currentUser;
+    _currentUsername = user?.username;
+  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -115,6 +127,19 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildAccountCard() {
+    if (_currentUsername == null) {
+      return const Card(
+        child: Padding(
+          padding: EdgeInsets.all(20),
+          child: Text('Loading account information...'),
+        ),
+      );
+    }
+
+    final balance = _userDataService.getUserBalance(_currentUsername!);
+    final accountType = _userDataService.getUserAccount(_currentUsername!).accountType;
+    final accountNumber = _userDataService.getUserAccount(_currentUsername!).maskedAccountNumber;
+
     return InkWell(
       onTap: () {
         Navigator.pushNamed(context, '/accounts');
@@ -150,26 +175,36 @@ class _HomeScreenState extends State<HomeScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Savings Account',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        accountType,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 5),
-                    const Text(
-                      '₹40,307.89',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF667EEA),
+                      const SizedBox(height: 5),
+                      Text(
+                        '₹${balance.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF667EEA),
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 5),
+                      Text(
+                        accountNumber,
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const Icon(Icons.arrow_forward_ios, color: Colors.grey),
               ],
@@ -201,19 +236,27 @@ class _HomeScreenState extends State<HomeScreen> {
       delegate: SliverChildListDelegate(
         [
           _buildActionItem(Icons.receipt_long, 'Bill Payments'),
-          _buildActionItem(Icons.swap_horiz, 'Transfer'),
-          _buildActionItem(Icons.person_add_alt_1_outlined, 'Add Payee'),
+          _buildActionItem(Icons.swap_horiz, 'Transfer', onTap: () {
+            Navigator.pushNamed(context, '/transfer');
+          }),
           _buildActionItem(Icons.qr_code_scanner, 'Scan & Pay'),
-          _buildActionItem(Icons.battery_charging_full, 'Recharge'),
-          _buildActionItem(Icons.send_to_mobile, 'UPI Payment'),
+          _buildActionItem(Icons.battery_charging_full, 'Recharge', onTap: () {
+            Navigator.pushNamed(context, '/recharge');
+          }),
+          _buildActionItem(Icons.savings, 'Deposits', onTap: () {
+            Navigator.pushNamed(context, '/deposits');
+          }),
+          _buildActionItem(Icons.send_to_mobile, 'UPI Payment', onTap: () {
+            Navigator.pushNamed(context, '/upi_payment');
+          }),
         ],
       ),
     );
   }
 
-  Widget _buildActionItem(IconData icon, String label) {
+  Widget _buildActionItem(IconData icon, String label, {VoidCallback? onTap}) {
     return InkWell(
-      onTap: () {},
+      onTap: onTap,
       borderRadius: BorderRadius.circular(15),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,

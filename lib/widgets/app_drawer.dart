@@ -1,7 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:raksha/services/auth_service.dart';
+import 'package:raksha/services/user_data_service.dart';
 
-class AppDrawer extends StatelessWidget {
+class AppDrawer extends StatefulWidget {
   const AppDrawer({super.key});
+
+  @override
+  State<AppDrawer> createState() => _AppDrawerState();
+}
+
+class _AppDrawerState extends State<AppDrawer> {
+  final AuthService _authService = AuthService();
+  final UserDataService _userDataService = UserDataService();
+  String? _currentUsername;
+  String _userName = 'User';
+
+  @override
+  void initState() {
+    super.initState();
+    final user = _authService.currentUser;
+    _currentUsername = user?.username;
+    if (_currentUsername != null) {
+      _userName = _userDataService.getUserName(_currentUsername!);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,10 +44,18 @@ class AppDrawer extends StatelessWidget {
               title: 'Pay',
               subtitle: 'UPI, Transfer, Cards, Recharge...',
               children: [
-                _buildSubDrawerItem(text: 'UPI Payment', onTap: () {}),
-                _buildSubDrawerItem(text: 'Money Transfer', onTap: () {}),
-                _buildSubDrawerItem(text: 'Cards', onTap: () {}),
-                _buildSubDrawerItem(text: 'Recharge', onTap: () {}),
+                _buildSubDrawerItem(text: 'UPI Payment', onTap: () {
+                  Navigator.pushNamed(context, '/upi_payment');
+                }),
+                _buildSubDrawerItem(text: 'Money Transfer', onTap: () {
+                  Navigator.pushNamed(context, '/transfer');
+                }),
+                _buildSubDrawerItem(text: 'Cards', onTap: () {
+                  Navigator.pushNamed(context, '/cards');
+                }),
+                _buildSubDrawerItem(text: 'Recharge', onTap: () {
+                  Navigator.pushNamed(context, '/recharge');
+                }),
               ],
             ),
              _buildExpansionTile(
@@ -36,8 +66,12 @@ class AppDrawer extends StatelessWidget {
                 _buildSubDrawerItem(text: 'Accounts', onTap: () {
                   Navigator.pushNamed(context, '/accounts');
                 }),
-                _buildSubDrawerItem(text: 'Deposits', onTap: () {}),
-                _buildSubDrawerItem(text: 'Safe Deposit Lockers', onTap: () {}),
+                _buildSubDrawerItem(text: 'Deposits', onTap: () {
+                  Navigator.pushNamed(context, '/deposits');
+                }),
+                _buildSubDrawerItem(text: 'Safe Deposit Lockers', onTap: () {
+                  Navigator.pushNamed(context, '/safe_deposit_lockers');
+                }),
               ],
             ),
              _buildExpansionTile(
@@ -54,11 +88,6 @@ class AppDrawer extends StatelessWidget {
               icon: Icons.person_outline,
               text: 'Your Profile',
               onTap: () {},
-            ),
-            _buildDrawerItem(
-              icon: Icons.bug_report_outlined,
-              text: 'Debug Data',
-              onTap: () => Navigator.pushNamed(context, '/debug'),
             ),
             _buildDrawerItem(
               icon: Icons.logout,
@@ -94,7 +123,7 @@ class AppDrawer extends StatelessWidget {
           end: Alignment.bottomRight,
         ),
       ),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
@@ -104,21 +133,21 @@ class AppDrawer extends StatelessWidget {
             child: Icon(
               Icons.person,
               size: 40,
-              color: Color(0xFF667EEA),
+              color: const Color(0xFF667EEA),
             ),
           ),
-          SizedBox(height: 10),
+          const SizedBox(height: 10),
           Text(
-            'Deepam Goyal',
-            style: TextStyle(
+            _userName,
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
           ),
           Text(
-            'Last Login: Jun 22, 10:40 AM',
-            style: TextStyle(
+            'Last Login: ${_authService.currentUser?.lastLogin.toString().substring(0, 16) ?? 'Unknown'}',
+            style: const TextStyle(
               color: Colors.white70,
               fontSize: 12,
             ),
