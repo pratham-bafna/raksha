@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:raksha/widgets/app_drawer.dart';
 import 'package:raksha/services/user_data_service.dart';
 import 'package:raksha/services/auth_service.dart';
+import '../screens/add_payee_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -231,22 +232,25 @@ class _HomeScreenState extends State<HomeScreen> {
         crossAxisCount: 3,
         mainAxisSpacing: 10,
         crossAxisSpacing: 10,
-        childAspectRatio: 1.1
+        childAspectRatio: 1.1,
       ),
       delegate: SliverChildListDelegate(
         [
-          _buildActionItem(Icons.receipt_long, 'Bill Payments'),
-          _buildActionItem(Icons.swap_horiz, 'Transfer', onTap: () {
-            Navigator.pushNamed(context, '/transfer');
+          _buildActionItem(Icons.receipt_long, 'Bill Payments', () {}),
+          _buildActionItem(Icons.swap_horiz, 'Transfer', () {
+            // Placeholder for MoneyTransferLandingScreen navigation
           }),
-          _buildActionItem(Icons.qr_code_scanner, 'Scan & Pay'),
-          _buildActionItem(Icons.battery_charging_full, 'Recharge', onTap: () {
+          _buildActionItem(Icons.person_add_alt_1_outlined, 'Add Payee', () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const AddPayeeScreen()),
+            );
+          }),
+          _buildActionItem(Icons.qr_code_scanner, 'Scan & Pay', () {}),
+          _buildActionItem(Icons.battery_charging_full, 'Recharge', () {
             Navigator.pushNamed(context, '/recharge');
           }),
-          _buildActionItem(Icons.savings, 'Deposits', onTap: () {
-            Navigator.pushNamed(context, '/deposits');
-          }),
-          _buildActionItem(Icons.send_to_mobile, 'UPI Payment', onTap: () {
+          _buildActionItem(Icons.send_to_mobile, 'UPI Payment', () {
             Navigator.pushNamed(context, '/upi_payment');
           }),
         ],
@@ -254,7 +258,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildActionItem(IconData icon, String label, {VoidCallback? onTap}) {
+  Widget _buildActionItem(IconData icon, String label, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(15),
@@ -266,8 +270,8 @@ class _HomeScreenState extends State<HomeScreen> {
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 colors: [Color(0xFFEDE7F6), Color(0xFFD1C4E9)],
-                 begin: Alignment.topLeft,
-                 end: Alignment.bottomRight,
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(15),
             ),
@@ -283,4 +287,4 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-} 
+}
