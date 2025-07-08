@@ -90,6 +90,12 @@ class _AppDrawerState extends State<AppDrawer> {
               onTap: () {},
             ),
             _buildDrawerItem(
+              icon: Icons.analytics,
+              text: 'Behavior Dashboard',
+              onTap: () => Navigator.pushNamed(context, '/behavior_dashboard'),
+            ),
+
+            _buildDrawerItem(
               icon: Icons.logout,
               text: 'Logout',
               onTap: () => Navigator.pushReplacementNamed(context, '/login'),

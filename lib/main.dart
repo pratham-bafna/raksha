@@ -10,6 +10,7 @@ import 'package:raksha/screens/deposits_screen.dart';
 import 'package:raksha/screens/recharge_screen.dart';
 import 'package:raksha/screens/safe_deposit_lockers_screen.dart';
 import 'package:raksha/screens/upi_payment/upi_payment_screen.dart';
+import 'package:raksha/screens/behavior_dashboard_screen.dart';
 import 'package:raksha/services/auth_service.dart';
 import 'package:raksha/models/user.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -101,6 +102,7 @@ class MyApp extends StatelessWidget {
             '/recharge': (context) => const RechargeScreen(),
             '/safe_deposit_lockers': (context) => const SafeDepositLockersScreen(),
             '/upi_payment': (context) => const UPIPaymentScreen(),
+            '/behavior_dashboard': (context) => const BehaviorDashboardScreen(),
           },
         ),
       ),

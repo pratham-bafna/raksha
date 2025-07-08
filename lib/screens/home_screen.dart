@@ -238,7 +238,7 @@ class _HomeScreenState extends State<HomeScreen> {
         [
           _buildActionItem(Icons.receipt_long, 'Bill Payments', () {}),
           _buildActionItem(Icons.swap_horiz, 'Transfer', () {
-            // Placeholder for MoneyTransferLandingScreen navigation
+            Navigator.pushNamed(context, '/transfer');
           }),
           _buildActionItem(Icons.person_add_alt_1_outlined, 'Add Payee', () {
             Navigator.push(
@@ -252,6 +252,9 @@ class _HomeScreenState extends State<HomeScreen> {
           }),
           _buildActionItem(Icons.send_to_mobile, 'UPI Payment', () {
             Navigator.pushNamed(context, '/upi_payment');
+          }),
+          _buildActionItem(Icons.analytics, 'Behavior Dashboard', () {
+            Navigator.pushNamed(context, '/behavior_dashboard');
           }),
         ],
       ),
