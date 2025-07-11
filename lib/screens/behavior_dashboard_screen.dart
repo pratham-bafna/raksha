@@ -5,6 +5,8 @@ import 'dart:io';
 import 'dart:convert';
 import '../models/behavior_data.dart';
 import '../services/behavior_storage_service.dart';
+import '../services/ml_model_service.dart';
+import 'risk_assessment_screen.dart';
 
 class BehaviorDashboardScreen extends StatefulWidget {
   const BehaviorDashboardScreen({super.key});
@@ -15,7 +17,9 @@ class BehaviorDashboardScreen extends StatefulWidget {
 
 class _BehaviorDashboardScreenState extends State<BehaviorDashboardScreen> {
   List<BehaviorData> _behaviorDataList = [];
+  Map<int, RiskAssessment> _riskAssessments = {};
   bool _isLoading = true;
+  final MLModelService _mlService = MLModelService();
 
   @override
   void initState() {
@@ -125,6 +129,7 @@ class _BehaviorDashboardScreenState extends State<BehaviorDashboardScreen> {
         await BehaviorStorageService.clearAllData();
         setState(() {
           _behaviorDataList.clear();
+          _riskAssessments.clear();
         });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('All data cleared')),
@@ -134,6 +139,50 @@ class _BehaviorDashboardScreenState extends State<BehaviorDashboardScreen> {
           SnackBar(content: Text('Error clearing data: $e')),
         );
       }
+    }
+  }
+
+  void _navigateToRiskAssessment() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const RiskAssessmentScreen(),
+      ),
+    );
+  }
+
+  Future<void> _analyzeLatestSession() async {
+    if (_behaviorDataList.isEmpty) return;
+
+    try {
+      await _mlService.initializeModel();
+      final latestSession = _behaviorDataList.first;
+      final riskAssessment = await _mlService.calculateRiskScore(latestSession);
+      
+      setState(() {
+        _riskAssessments[latestSession.sessionId ?? 0] = riskAssessment;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Latest session risk: ${riskAssessment.riskLevel.name.toUpperCase()}'),
+          backgroundColor: _getRiskColor(riskAssessment.riskLevel),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error analyzing session: $e')),
+      );
+    }
+  }
+
+  Color _getRiskColor(RiskLevel riskLevel) {
+    switch (riskLevel) {
+      case RiskLevel.low:
+        return Colors.green;
+      case RiskLevel.medium:
+        return Colors.orange;
+      case RiskLevel.high:
+        return Colors.red;
     }
   }
 
@@ -156,51 +205,72 @@ class _BehaviorDashboardScreenState extends State<BehaviorDashboardScreen> {
           // Action buttons
           Container(
             padding: const EdgeInsets.all(16),
-            child: Row(
+            child: Column(
               children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _exportJson,
-                    icon: const Icon(Icons.file_download),
-                    label: const Text('Export JSON'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF667EEA),
-                      foregroundColor: Colors.white,
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _exportJson,
+                        icon: const Icon(Icons.file_download),
+                        label: const Text('Export JSON'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF667EEA),
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _exportCsv,
+                        icon: const Icon(Icons.table_chart),
+                        label: const Text('Export CSV'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF667EEA),
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _exportCsv,
-                    icon: const Icon(Icons.table_chart),
-                    label: const Text('Export CSV'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF667EEA),
-                      foregroundColor: Colors.white,
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _navigateToRiskAssessment,
+                        icon: const Icon(Icons.security),
+                        label: const Text('Risk Assessment'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _clearData,
-                    icon: const Icon(Icons.delete_forever),
-                    label: const Text('Clear Data'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _clearData,
+                        icon: const Icon(Icons.delete_forever),
+                        label: const Text('Clear Data'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ],
             ),
           ),
           
-          // Data count
+          // Data count and quick analysis
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   'Total Sessions: ${_behaviorDataList.length}',
@@ -209,6 +279,17 @@ class _BehaviorDashboardScreenState extends State<BehaviorDashboardScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                if (_behaviorDataList.isNotEmpty)
+                  ElevatedButton.icon(
+                    onPressed: _analyzeLatestSession,
+                    icon: const Icon(Icons.analytics, size: 16),
+                    label: const Text('Quick Risk Check'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.purple,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -240,6 +321,8 @@ class _BehaviorDashboardScreenState extends State<BehaviorDashboardScreen> {
   }
 
   Widget _buildDataCard(BehaviorData data, int index) {
+    final riskAssessment = _riskAssessments[data.sessionId ?? index];
+    
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Padding(
@@ -257,20 +340,82 @@ class _BehaviorDashboardScreenState extends State<BehaviorDashboardScreen> {
                     fontSize: 16,
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF667EEA),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Text(
-                    'Behavior Data',
-                    style: TextStyle(color: Colors.white, fontSize: 12),
-                  ),
+                Row(
+                  children: [
+                    if (riskAssessment != null) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _getRiskColor(riskAssessment.riskLevel),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${riskAssessment.riskLevel.name.toUpperCase()} RISK',
+                          style: const TextStyle(color: Colors.white, fontSize: 10),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF667EEA),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        'Behavior Data',
+                        style: TextStyle(color: Colors.white, fontSize: 12),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
             const SizedBox(height: 12),
+
+            // Risk information if available
+            if (riskAssessment != null) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: _getRiskColor(riskAssessment.riskLevel).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: _getRiskColor(riskAssessment.riskLevel).withOpacity(0.3),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Risk Score:',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          riskAssessment.riskPercentage,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: _getRiskColor(riskAssessment.riskLevel),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      riskAssessment.riskDescription,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: _getRiskColor(riskAssessment.riskLevel).withOpacity(0.8),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             
             // Touch metrics
             _buildMetricRow('Tap Duration', '${(data.tapDuration * 100).toStringAsFixed(1)}%'),

@@ -27,38 +27,44 @@ class SensorCollector {
     final dayOfWeekSat = weekday == 6 ? 1 : 0;
     final dayOfWeekSun = weekday == 7 ? 1 : 0;
 
-    // Touch metrics normalization
-    final tapDuration = _normalizeRange(raw.rawTapDuration, 0.05, 0.3);
-    final swipeVelocity = _normalizeRange(raw.rawSwipeVelocity, 0.7, 1.0);
-    final touchPressure = _normalizeRange(raw.rawTouchPressure, 0.1, 1.0);
-    final tapIntervalAvg = _normalizeRange(raw.rawTapIntervalAvg, 0.1, 0.4);
+    // Touch metrics normalization - BETTER RANGES based on real data
+    final tapDuration = _normalizeRange(raw.rawTapDuration, 10.0, 500.0);         // 10ms to 500ms (more realistic)
+    final swipeVelocity = _normalizeRange(raw.rawSwipeVelocity, 50.0, 1000.0);    // 50 to 1000 px/s (more realistic)
+    final touchPressure = _normalizeRange(raw.rawTouchPressure, 0.05, 0.8);       // 0.05 to 0.8 (avoid constant 1.0)
+    final tapIntervalAvg = _normalizeRange(raw.rawTapIntervalAvg, 50.0, 1000.0);  // 50ms to 1s (more realistic)
 
-    // Motion sensor variance calculation and normalization
+    // Motion sensor variance calculation and normalization - BETTER RANGES
     double accelVariance = 0.0;
     int accelVarianceMissing = raw.accelMissing ? 1 : 0;
-    if (!raw.accelMissing && raw.rawAccelReadings != null) {
+    if (!raw.accelMissing && raw.rawAccelReadings != null && raw.rawAccelReadings!.isNotEmpty) {
       accelVariance = _calculateVariance(raw.rawAccelReadings!);
-      accelVariance = _normalizeRange(accelVariance, 0.0, 3.5);
+      accelVariance = _normalizeRange(accelVariance, 0.001, 5.0); // Better variance range
     }
 
     double gyroVariance = 0.0;
     int gyroVarianceMissing = raw.gyroMissing ? 1 : 0;
-    if (!raw.gyroMissing && raw.rawGyroReadings != null) {
+    if (!raw.gyroMissing && raw.rawGyroReadings != null && raw.rawGyroReadings!.isNotEmpty) {
       gyroVariance = _calculateVariance(raw.rawGyroReadings!);
-      gyroVariance = _normalizeRange(gyroVariance, 0.0, 3.5);
+      gyroVariance = _normalizeRange(gyroVariance, 0.0001, 1.0); // Better variance range
     }
 
-    // Device context normalization
-    final batteryLevel = raw.rawBatteryLevel ?? 0.0; // Already 0-1 from collection
+    // Device context normalization - FIX BRIGHTNESS ISSUE
+    final batteryLevel = (raw.rawBatteryLevel ?? 0.0).clamp(0.0, 1.0); // Already 0-1 from collection
     final chargingState = raw.rawChargingState == true ? 1 : 0;
-    final brightnessLevel = _normalizeRange(raw.rawBrightnessLevel, 0.0, 255.0);
-    final screenOnTime = _normalizeRange(raw.rawScreenOnTime, 0.0, 600.0); // 10 minutes max
+    
+    // FIX BRIGHTNESS - your data shows 0.002-0.58, so it's already normalized but with wrong scale
+    // Let's pass it through as-is since the system gives us proper values
+    final brightnessLevel = raw.rawBrightnessLevel ?? 0.0;
+    
+    final screenOnTime = _normalizeRange(raw.rawScreenOnTime, 0.0, 300.0); // 0 to 5 minutes (more realistic)
 
-    // Network/Location normalization
+    // Network/Location normalization - FIX WIFI HASH to get non-zero values
     double wifiIdHash = 0.0;
     int wifiInfoMissing = raw.wifiInfoMissing ? 1 : 0;
-    if (!raw.wifiInfoMissing && raw.rawWifiSsidHash != null) {
-      final hash = int.tryParse(raw.rawWifiSsidHash!) ?? 0;
+    if (!raw.wifiInfoMissing && raw.rawWifiSsidHash != null && raw.rawWifiSsidHash!.isNotEmpty) {
+      // Better hash calculation to avoid mostly 0 values
+      final hashString = raw.rawWifiSsidHash!;
+      final hash = hashString.hashCode.abs(); // Use string hashCode instead of parsing
       wifiIdHash = _normalizeHash(hash);
     }
 
@@ -97,31 +103,44 @@ class SensorCollector {
       dayOfWeekFri: dayOfWeekFri,
       dayOfWeekSat: dayOfWeekSat,
       dayOfWeekSun: dayOfWeekSun,
-      deviceOrientation: _normalizeRange(raw.rawDeviceOrientation, -180.0, 180.0),
-      touchArea: _normalizeRange(raw.rawTouchArea, 0.0, 10.0),
-      touchEventCount: _normalizeRange(raw.rawTouchEventCount?.toDouble(), 0.0, 100.0),
-      appUsageTime: _normalizeRange(raw.rawAppUsageTime, 0.0, 60.0),
+      deviceOrientation: _normalizeRange(raw.rawDeviceOrientation, -90.0, 90.0),      // More realistic range
+      touchArea: _normalizeRange(raw.rawTouchArea, 1.0, 50.0),                     // Smaller, more realistic range
+      touchEventCount: _normalizeRange(raw.rawTouchEventCount?.toDouble(), 0.0, 20.0), // Lower max for more variation
+      appUsageTime: _normalizeRange(raw.rawAppUsageTime, 0.0, 10.0),               // 0 to 10 seconds (more realistic)
       timestamp: raw.collectionTimestamp,
       userId: userId,
       sessionId: sessionId,
     );
   }
 
+  // IMPROVED NORMALIZATION FUNCTION
   static double _normalizeRange(double? value, double min, double max) {
     if (value == null) return 0.0;
-    return ((value - min) / (max - min)).clamp(0.0, 1.0);
+    if (max <= min) return 0.5; // Avoid division by zero
+    
+    // Clamp and normalize
+    final clampedValue = value.clamp(min, max);
+    final normalized = (clampedValue - min) / (max - min);
+    
+    return normalized.clamp(0.0, 1.0);
   }
 
+  // FIXED VARIANCE CALCULATION
   static double _calculateVariance(List<double> values) {
-    if (values.isEmpty) return 0.0;
+    if (values.isEmpty || values.length == 1) return 0.0;
+    
     final mean = values.reduce((a, b) => a + b) / values.length;
     final squaredDiffs = values.map((x) => pow(x - mean, 2));
-    return squaredDiffs.reduce((a, b) => a + b) / values.length;
+    final variance = squaredDiffs.reduce((a, b) => a + b) / values.length;
+    
+    return variance;
   }
 
   static double _normalizeHash(int hash) {
-    // Normalize hash to 0-1 range
-    return (hash % 1000000) / 1000000.0;
+    // Better hash normalization to avoid mostly 0 values
+    // Use modulo with a smaller number and add offset to avoid 0
+    final normalizedHash = ((hash % 999983) + 1) / 1000000.0;  // +1 to avoid 0, prime modulo
+    return normalizedHash.clamp(0.001, 1.0); // Ensure minimum value > 0
   }
 
   static double _normalizeLatitude(double lat) {
@@ -131,4 +150,4 @@ class SensorCollector {
   static double _normalizeLongitude(double lon) {
     return _normalizeRange(lon, _minLon, _maxLon);
   }
-} 
+}

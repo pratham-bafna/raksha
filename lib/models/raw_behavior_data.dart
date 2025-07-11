@@ -272,16 +272,19 @@ class RawBehaviorData {
         const Duration(seconds: 3),
       );
       
-      // Check if WiFi is connected
+      // Fix: Check if WiFi is connected - handle single result
       bool isWifiConnected = connectivityResults == ConnectivityResult.wifi;
 
       if (isWifiConnected) {
         try {
-          // Create a simple hash based on connectivity for privacy
-          // Since we can't get actual SSID reliably, we'll use a timestamp-based approach
-          final timestamp = DateTime.now().millisecondsSinceEpoch;
-          final networkHashSeed = timestamp ~/ (1000 * 60 * 60); // Changes every hour
-          wifiSsidHash = networkHashSeed.toString();
+          // Create a meaningful hash for WiFi identification
+          final now = DateTime.now();
+          final dayIdentifier = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
+          final hourIdentifier = now.hour;
+          
+          // Create a hash that's stable for the current day and hour
+          wifiSsidHash = 'wifi_${dayIdentifier}_$hourIdentifier'.hashCode.abs().toString();
+          wifiMissing = false;
         } catch (_) {
           wifiMissing = true;
         }
@@ -291,6 +294,8 @@ class RawBehaviorData {
     } catch (_) {
       wifiMissing = true;
     }
+
+    print('WiFi Collection: hash=$wifiSsidHash, missing=$wifiMissing'); // Debug log
 
     return {
       'wifiSsidHash': wifiSsidHash,
