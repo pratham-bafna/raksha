@@ -20,8 +20,16 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    final user = _authService.currentUser;
-    _currentUsername = user?.username;
+    _fetchCurrentUser();
+  }
+
+  Future<void> _fetchCurrentUser() async {
+    final userData = await _authService.getUserData(_currentUsername ?? '');
+    if (userData != null) {
+      setState(() {
+        _currentUsername = userData['username'];
+      });
+    }
   }
 
   void _onItemTapped(int index) {

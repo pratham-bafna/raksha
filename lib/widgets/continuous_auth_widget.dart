@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-import '../services/continuous_auth_service.dart';
+import 'package:raksha/services/continuous_auth_service.dart';
 
 class ContinuousAuthWidget extends StatefulWidget {
   const ContinuousAuthWidget({super.key});

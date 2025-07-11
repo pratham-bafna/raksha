@@ -18,9 +18,12 @@ import 'package:raksha/models/user.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:raksha/services/behavior_monitor_service.dart';
 import 'package:raksha/services/touch_event_service.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+
   await Hive.initFlutter();
   await Hive.openBox('behaviorData');
   
