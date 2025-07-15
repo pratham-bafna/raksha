@@ -3,9 +3,12 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dart:io';
 import 'dart:convert';
+import 'dart:async';
 import '../models/behavior_data.dart';
 import '../services/behavior_storage_service.dart';
-import '../services/ml_model_service.dart';
+import '../services/cloud_ml_service.dart';
+import '../services/real_time_cloud_risk_service.dart';
+import '../services/behavior_monitor_service.dart';
 import 'risk_assessment_screen.dart';
 
 class BehaviorDashboardScreen extends StatefulWidget {
@@ -19,12 +22,72 @@ class _BehaviorDashboardScreenState extends State<BehaviorDashboardScreen> {
   List<BehaviorData> _behaviorDataList = [];
   Map<int, RiskAssessment> _riskAssessments = {};
   bool _isLoading = true;
-  final MLModelService _mlService = MLModelService();
+  final CloudMLService _cloudMLService = CloudMLService();
+  final RealTimeCloudRiskService _realTimeRiskService = RealTimeCloudRiskService();
+  final BehaviorMonitorService _behaviorMonitor = BehaviorMonitorService();
+  
+  StreamSubscription<RiskAssessment>? _riskStreamSubscription;
 
   @override
   void initState() {
     super.initState();
+    _initializeServices();
     _loadData();
+    _listenToRealTimeRisk();
+  }
+
+  Future<void> _initializeServices() async {
+    await _realTimeRiskService.initialize();
+    await _behaviorMonitor.initialize();
+  }
+
+  void _listenToRealTimeRisk() {
+    _riskStreamSubscription = _behaviorMonitor.riskStream.listen((riskAssessment) {
+      // Update UI when new risk assessment is available
+      if (_behaviorDataList.isNotEmpty) {
+        final latestSession = _behaviorDataList.first;
+        setState(() {
+          _riskAssessments[latestSession.sessionId ?? 0] = riskAssessment;
+        });
+        
+        // Show notification for high risk
+        if (riskAssessment.riskLevel == RiskLevel.high) {
+          _showHighRiskAlert(riskAssessment);
+        }
+      }
+    });
+  }
+
+  void _showHighRiskAlert(RiskAssessment riskAssessment) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.warning, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'HIGH RISK DETECTED: ${riskAssessment.riskPercentage}',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 5),
+        action: SnackBarAction(
+          label: 'View Details',
+          textColor: Colors.white,
+          onPressed: _navigateToRiskAssessment,
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _riskStreamSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -154,9 +217,8 @@ class _BehaviorDashboardScreenState extends State<BehaviorDashboardScreen> {
     if (_behaviorDataList.isEmpty) return;
 
     try {
-      await _mlService.initializeModel();
       final latestSession = _behaviorDataList.first;
-      final riskAssessment = await _mlService.calculateRiskScore(latestSession);
+      final riskAssessment = await _cloudMLService.calculateRiskScore(latestSession);
       
       setState(() {
         _riskAssessments[latestSession.sessionId ?? 0] = riskAssessment;
@@ -164,14 +226,43 @@ class _BehaviorDashboardScreenState extends State<BehaviorDashboardScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Latest session risk: ${riskAssessment.riskLevel.name.toUpperCase()}'),
+          content: Row(
+            children: [
+              Icon(
+                _getRiskIcon(riskAssessment.riskLevel),
+                color: Colors.white,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Latest session risk: ${riskAssessment.riskLevel.name.toUpperCase()} (${riskAssessment.riskPercentage})',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
           backgroundColor: _getRiskColor(riskAssessment.riskLevel),
+          duration: const Duration(seconds: 4),
         ),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error analyzing session: $e')),
+        SnackBar(
+          content: Text('Error analyzing session: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
+    }
+  }
+
+  IconData _getRiskIcon(RiskLevel riskLevel) {
+    switch (riskLevel) {
+      case RiskLevel.low:
+        return Icons.check_circle;
+      case RiskLevel.medium:
+        return Icons.warning;
+      case RiskLevel.high:
+        return Icons.error;
     }
   }
 
@@ -184,6 +275,104 @@ class _BehaviorDashboardScreenState extends State<BehaviorDashboardScreen> {
       case RiskLevel.high:
         return Colors.red;
     }
+  }
+
+  Widget _buildCloudStatusIndicator() {
+    final isCloudAvailable = _behaviorMonitor.isCloudServiceAvailable;
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: isCloudAvailable ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isCloudAvailable ? Colors.green : Colors.orange,
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isCloudAvailable ? Icons.cloud_done : Icons.cloud_off,
+            color: isCloudAvailable ? Colors.green : Colors.orange,
+            size: 16,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            isCloudAvailable ? 'Cloud ML Online' : 'Cloud ML Offline',
+            style: TextStyle(
+              color: isCloudAvailable ? Colors.green : Colors.orange,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRealTimeRiskIndicator() {
+    if (_behaviorDataList.isEmpty) return const SizedBox.shrink();
+    
+    final latestSession = _behaviorDataList.first;
+    final riskAssessment = _riskAssessments[latestSession.sessionId ?? 0];
+    
+    if (riskAssessment == null) return const SizedBox.shrink();
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _getRiskColor(riskAssessment.riskLevel).withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: _getRiskColor(riskAssessment.riskLevel),
+          width: 2,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            _getRiskIcon(riskAssessment.riskLevel),
+            color: _getRiskColor(riskAssessment.riskLevel),
+            size: 24,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Latest Session Risk: ${riskAssessment.riskLevel.name.toUpperCase()}',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: _getRiskColor(riskAssessment.riskLevel),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Score: ${riskAssessment.riskPercentage}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: _getRiskColor(riskAssessment.riskLevel),
+                  ),
+                ),
+                if (riskAssessment.cloudResponse != null)
+                  Text(
+                    'Cloud: ${riskAssessment.cloudDetails}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -294,6 +483,12 @@ class _BehaviorDashboardScreenState extends State<BehaviorDashboardScreen> {
             ),
           ),
           
+          const SizedBox(height: 8),
+          
+          // Cloud and real-time risk indicators
+          _buildCloudStatusIndicator(),
+          const SizedBox(height: 8),
+          _buildRealTimeRiskIndicator(),
           const SizedBox(height: 8),
           
           // Data list
@@ -486,4 +681,4 @@ class _BehaviorDashboardScreenState extends State<BehaviorDashboardScreen> {
       ),
     );
   }
-} 
+}

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import '../models/behavior_data.dart';
 import '../services/behavior_storage_service.dart';
-import '../services/ml_model_service.dart';
+import '../services/cloud_ml_service.dart';
+import '../services/real_time_cloud_risk_service.dart';
+import '../services/behavior_monitor_service.dart';
 
 class RiskAssessmentScreen extends StatefulWidget {
   const RiskAssessmentScreen({super.key});
@@ -15,12 +18,35 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
   Map<int, RiskAssessment> _riskAssessments = {};
   bool _isLoading = true;
   bool _isAnalyzing = false;
-  final MLModelService _mlService = MLModelService();
+  final CloudMLService _cloudMLService = CloudMLService();
+  final RealTimeCloudRiskService _realTimeRiskService = RealTimeCloudRiskService();
+  final BehaviorMonitorService _behaviorMonitor = BehaviorMonitorService();
+  
+  StreamSubscription<RiskAssessment>? _riskStreamSubscription;
 
   @override
   void initState() {
     super.initState();
     _initializeAndLoadData();
+    _listenToRealTimeRisk();
+  }
+
+  void _listenToRealTimeRisk() {
+    _riskStreamSubscription = _behaviorMonitor.riskStream.listen((riskAssessment) {
+      // Update UI when new risk assessment is available
+      if (_behaviorDataList.isNotEmpty) {
+        final latestSession = _behaviorDataList.first;
+        setState(() {
+          _riskAssessments[latestSession.sessionId ?? 0] = riskAssessment;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _riskStreamSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _initializeAndLoadData() async {
@@ -29,8 +55,9 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
     });
 
     try {
-      // Initialize ML model first
-      await _mlService.initializeModel();
+      // Initialize cloud services
+      await _realTimeRiskService.initialize();
+      await _behaviorMonitor.initialize();
       
       // Load behavior data
       final data = await BehaviorStorageService.getAllBehaviorData();
@@ -61,7 +88,7 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
       
       for (int i = 0; i < _behaviorDataList.length; i++) {
         final session = _behaviorDataList[i];
-        final riskAssessment = await _mlService.calculateRiskScore(session);
+        final riskAssessment = await _cloudMLService.calculateRiskScore(session);
         assessments[session.sessionId ?? i] = riskAssessment;
         
         // Update UI progressively
@@ -92,21 +119,30 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
     });
 
     try {
-      // Retrain the model (initialize with new synthetic data)
-      await _mlService.initializeModel();
+      // Test cloud connection and re-analyze all sessions
+      final isConnected = await _cloudMLService.testConnection();
       
-      // Re-analyze all sessions
-      await _analyzeAllSessions();
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Model retrained successfully')),
-      );
+      if (isConnected) {
+        // Re-analyze all sessions with fresh cloud assessments
+        await _analyzeAllSessions();
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Cloud ML service refreshed successfully')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cloud ML service is not available'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
     } catch (e) {
       setState(() {
         _isAnalyzing = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error retraining model: $e')),
+        SnackBar(content: Text('Error refreshing cloud service: $e')),
       );
     }
   }
@@ -122,26 +158,25 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _initializeAndLoadData,
-          ),
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              if (value == 'retrain') {
-                _retainModel();
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'retrain',
-                child: Row(
-                  children: [
-                    Icon(Icons.school),
-                    SizedBox(width: 8),
-                    Text('Retrain Model'),
-                  ],
-                ),
-              ),
-            ],
-          ),
+          ),                    PopupMenuButton<String>(
+                      onSelected: (value) {
+                        if (value == 'refresh') {
+                          _retainModel();
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: 'refresh',
+                          child: Row(
+                            children: [
+                              Icon(Icons.refresh),
+                              SizedBox(width: 8),
+                              Text('Refresh Cloud ML'),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
         ],
       ),
       body: Column(
@@ -154,12 +189,12 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
                 Row(
                   children: [
                     Icon(
-                      _mlService.isModelTrained ? Icons.check_circle : Icons.pending,
-                      color: _mlService.isModelTrained ? Colors.green : Colors.orange,
+                      _behaviorMonitor.isCloudServiceAvailable ? Icons.cloud_done : Icons.cloud_off,
+                      color: _behaviorMonitor.isCloudServiceAvailable ? Colors.green : Colors.orange,
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      _mlService.isModelTrained ? 'ML Model: Trained' : 'ML Model: Initializing...',
+                      _behaviorMonitor.isCloudServiceAvailable ? 'Cloud ML: Online' : 'Cloud ML: Offline',
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ],

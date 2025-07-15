@@ -18,6 +18,7 @@ import 'package:raksha/models/user.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:raksha/services/behavior_monitor_service.dart';
 import 'package:raksha/services/touch_event_service.dart';
+import 'package:raksha/services/real_time_cloud_risk_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 void main() async {
@@ -30,8 +31,13 @@ void main() async {
   // Initialize auth service
   await AuthService().initialize();
 
-  // Start behavior monitoring service
-  BehaviorMonitorService().start();
+  // Initialize cloud-based risk assessment service
+  await RealTimeCloudRiskService().initialize();
+
+  // Initialize and start behavior monitoring service
+  final behaviorMonitor = BehaviorMonitorService();
+  await behaviorMonitor.initialize();
+  behaviorMonitor.start();
 
   runApp(const MyApp());
 }
