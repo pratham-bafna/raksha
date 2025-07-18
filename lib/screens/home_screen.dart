@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:raksha/widgets/app_drawer.dart';
 import 'package:raksha/services/user_data_service.dart';
 import 'package:raksha/services/auth_service.dart';
+import '../mixins/behavior_monitor_mixin.dart';
 import '../screens/add_payee_screen.dart';
+import '../screens/bill_payments_screen.dart';
+import '../screens/scan_pay_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -11,7 +14,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with BehaviorMonitorMixin {
   int _selectedIndex = 0;
   final UserDataService _userDataService = UserDataService();
   final AuthService _authService = AuthService();
@@ -244,7 +247,12 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       delegate: SliverChildListDelegate(
         [
-          _buildActionItem(Icons.receipt_long, 'Bill Payments', () {}),
+          _buildActionItem(Icons.receipt_long, 'Bill Payments', () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const BillPaymentsScreen()),
+            );
+          }),
           _buildActionItem(Icons.swap_horiz, 'Transfer', () {
             Navigator.pushNamed(context, '/transfer');
           }),
@@ -254,7 +262,12 @@ class _HomeScreenState extends State<HomeScreen> {
               MaterialPageRoute(builder: (context) => const AddPayeeScreen()),
             );
           }),
-          _buildActionItem(Icons.qr_code_scanner, 'Scan & Pay', () {}),
+          _buildActionItem(Icons.qr_code_scanner, 'Scan & Pay', () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const ScanPayScreen()),
+            );
+          }),
           _buildActionItem(Icons.battery_charging_full, 'Recharge', () {
             Navigator.pushNamed(context, '/recharge');
           }),

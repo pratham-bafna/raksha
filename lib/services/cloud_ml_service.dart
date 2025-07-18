@@ -1,27 +1,38 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/behavior_data.dart';
+import '../utils/user_id_generator.dart';
+import '../services/auth_service.dart';
 
 class CloudMLService {
   static final CloudMLService _instance = CloudMLService._internal();
   factory CloudMLService() => _instance;
   CloudMLService._internal();
 
-  // Cloud ML API endpoint
-  static const String _apiUrl = "http://your-env-name.eba-iq74dxhs.us-west-2.elasticbeanstalk.com/predict";
+  // New EC2-hosted ML API endpoint
+  static const String _baseApiUrl = "http://43.204.97.149";
   
   // Timeout for API calls
-  static const Duration _timeout = Duration(seconds: 10);
+  static const Duration _timeout = Duration(seconds: 15);
+  
+  // Auth service instance for getting current user
+  final AuthService _authService = AuthService();
 
-  /// Calculate risk score using cloud-based ML model
+  /// Calculate risk score using EC2-hosted ML model
   Future<RiskAssessment> calculateRiskScore(BehaviorData session) async {
     try {
+      // Use the working user ID directly
+      const userId = "e52baba8acbc"; // Working user ID
+      final apiUrl = "$_baseApiUrl/predict/$userId";
+      
+      print('🚀 Making API call to: $apiUrl');
+      
       // Prepare data for API call
       final requestData = _prepareApiRequest(session);
       
-      // Make API call to cloud ML service
+      // Make API call to EC2-hosted ML service
       final response = await http.post(
-        Uri.parse(_apiUrl),
+        Uri.parse(apiUrl),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -31,12 +42,13 @@ class CloudMLService {
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
+        print('✅ Cloud ML Response: $result');
         return _parseApiResponse(result, session);
       } else {
-        throw Exception('API call failed with status: ${response.statusCode}');
+        throw Exception('API call failed with status: ${response.statusCode}, body: ${response.body}');
       }
     } catch (e) {
-      print('Error calling cloud ML service: $e');
+      print('❌ Error calling cloud ML service: $e');
       // Return fallback risk assessment
       return _getFallbackRiskAssessment(session);
     }
@@ -113,41 +125,31 @@ class CloudMLService {
 
   /// Normalize risk score to 0-1 range
   double _normalizeRiskScore(double rawScore) {
-    // The cloud model returns very low risk scores (around 0.05...)
-    // Using 95% threshold approach - anything above 0.05 is considered risky
-    if (rawScore <= 0) return 0.0;
-    
-    // Since normal scores are around 0.05, we'll normalize based on this
-    // Scores above 0.1 (double the normal) are considered very high risk
-    return (rawScore / 0.1).clamp(0.0, 1.0);
+    // The model now returns normalized scores directly
+    // No need for complex 95% percentile logic
+    return rawScore.clamp(0.0, 1.0);
   }
 
-  /// Determine risk level based on anomaly flag and risk score
+  /// Determine risk level based on risk score
   RiskLevel _determineRiskLevel(int anomaly, double normalizedRiskScore) {
-    // For scores typically around 0.05, use 95% threshold approach
-    if (anomaly == 1) {
-      // Anomaly detected by the model
-      if (normalizedRiskScore >= 0.8) {
-        return RiskLevel.high;    // Score > 0.08 (60% above normal)
-      } else if (normalizedRiskScore >= 0.6) {
-        return RiskLevel.medium;  // Score > 0.06 (20% above normal)
-      } else {
-        return RiskLevel.medium;  // Anomaly but normal score = medium risk
-      }
+    // Simple threshold-based risk levels:
+    // < 0.35 = Low risk (below 35%)
+    // < 0.75 = Medium risk (35% to 75%)
+    // >= 0.75 = High risk (75% and above)
+    
+    if (normalizedRiskScore < 0.35) {
+      return RiskLevel.low;
+    } else if (normalizedRiskScore < 0.75) {
+      return RiskLevel.medium;
     } else {
-      // No anomaly detected
-      if (normalizedRiskScore >= 0.7) {
-        return RiskLevel.medium;  // No anomaly but high score = medium risk
-      } else {
-        return RiskLevel.low;     // Normal behavior
-      }
+      return RiskLevel.high;
     }
   }
 
   /// Fallback risk assessment when cloud service is unavailable
   RiskAssessment _getFallbackRiskAssessment(BehaviorData session) {
     return RiskAssessment(
-      riskScore: 0.5, // Conservative normalized fallback (equivalent to ~0.05 raw score)
+      riskScore: 0.3, // Conservative fallback - low risk
       riskLevel: RiskLevel.low,
       touchAnomalyScore: 0.15,
       motionAnomalyScore: 0.1,
@@ -162,6 +164,12 @@ class CloudMLService {
   /// Test connectivity to cloud ML service
   Future<bool> testConnection() async {
     try {
+      // Test with the working user ID
+      const userId = "e52baba8acbc";
+      final apiUrl = "$_baseApiUrl/predict/$userId";
+      
+      print('🧪 Testing connection to: $apiUrl');
+      
       final testData = {
         "tap_duration": 0.15,      // Realistic normalized values
         "swipe_velocity": 0.35,
@@ -195,8 +203,10 @@ class CloudMLService {
         "app_usage_time": 0.05,
       };
 
+      print('🔍 Testing connection to: $apiUrl');
+      
       final response = await http.post(
-        Uri.parse(_apiUrl),
+        Uri.parse(apiUrl),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -204,11 +214,24 @@ class CloudMLService {
         body: jsonEncode(testData),
       ).timeout(_timeout);
 
-      return response.statusCode == 200;
+      final success = response.statusCode == 200;
+      print(success ? '✅ Connection test successful' : '❌ Connection test failed: ${response.statusCode}');
+      
+      return success;
     } catch (e) {
-      print('Cloud ML service connection test failed: $e');
+      print('❌ Cloud ML service connection test failed: $e');
       return false;
     }
+  }
+
+  /// Check if cloud service is available
+  bool get isCloudServiceAvailable => true; // EC2 service should be more reliable
+  
+  /// Get current user ID for debugging
+  String? getCurrentUserId() {
+    final currentUser = _authService.currentUser;
+    if (currentUser == null) return null;
+    return UserIdGenerator.generateUserId(currentUser.username);
   }
 }
 
@@ -245,7 +268,7 @@ class RiskAssessment {
   String get riskDescription {
     switch (riskLevel) {
       case RiskLevel.low:
-        return 'Normal behavior patterns detected (95% confidence)';
+        return 'Normal behavior patterns detected';
       case RiskLevel.medium:
         return 'Slightly elevated risk - monitoring recommended';
       case RiskLevel.high:

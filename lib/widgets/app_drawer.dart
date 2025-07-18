@@ -99,11 +99,6 @@ class _AppDrawerState extends State<AppDrawer> {
               text: 'Risk Assessment',
               onTap: () => Navigator.pushNamed(context, '/risk_assessment'),
             ),
-            _buildDrawerItem(
-              icon: Icons.science,
-              text: 'ML Model Test',
-              onTap: () => Navigator.pushNamed(context, '/ml_test'),
-            ),
 
             _buildDrawerItem(
               icon: Icons.logout,

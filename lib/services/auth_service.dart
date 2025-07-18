@@ -4,6 +4,7 @@ import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:raksha/models/user.dart';
 import 'dart:convert';
+import 'real_time_cloud_risk_service.dart';
 
 class AuthService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -54,6 +55,13 @@ class AuthService {
       await _setCurrentUser(username);
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('logged_in_username', username);
+      
+      // Re-test cloud connection now that user is authenticated
+      try {
+        await RealTimeCloudRiskService().retestConnection();
+      } catch (e) {
+        print('⚠️ Could not retest cloud connection after login: $e');
+      }
     }
     return success;
   }
@@ -88,6 +96,14 @@ class AuthService {
 
       if (didAuthenticate) {
         await _setCurrentUser(savedUsername);
+        
+        // Re-test cloud connection now that user is authenticated
+        try {
+          await RealTimeCloudRiskService().retestConnection();
+        } catch (e) {
+          print('⚠️ Could not retest cloud connection after biometric login: $e');
+        }
+        
         return true;
       }
       return false;

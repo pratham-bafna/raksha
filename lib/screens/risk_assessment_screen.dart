@@ -5,6 +5,7 @@ import '../services/behavior_storage_service.dart';
 import '../services/cloud_ml_service.dart';
 import '../services/real_time_cloud_risk_service.dart';
 import '../services/behavior_monitor_service.dart';
+import '../mixins/behavior_monitor_mixin.dart';
 
 class RiskAssessmentScreen extends StatefulWidget {
   const RiskAssessmentScreen({super.key});
@@ -13,7 +14,7 @@ class RiskAssessmentScreen extends StatefulWidget {
   State<RiskAssessmentScreen> createState() => _RiskAssessmentScreenState();
 }
 
-class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
+class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> with BehaviorMonitorMixin {
   List<BehaviorData> _behaviorDataList = [];
   Map<int, RiskAssessment> _riskAssessments = {};
   bool _isLoading = true;

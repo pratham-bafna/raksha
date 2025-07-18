@@ -9,6 +9,7 @@ import '../services/behavior_storage_service.dart';
 import '../services/cloud_ml_service.dart';
 import '../services/real_time_cloud_risk_service.dart';
 import '../services/behavior_monitor_service.dart';
+import '../mixins/behavior_monitor_mixin.dart';
 import 'risk_assessment_screen.dart';
 
 class BehaviorDashboardScreen extends StatefulWidget {
@@ -18,7 +19,7 @@ class BehaviorDashboardScreen extends StatefulWidget {
   State<BehaviorDashboardScreen> createState() => _BehaviorDashboardScreenState();
 }
 
-class _BehaviorDashboardScreenState extends State<BehaviorDashboardScreen> {
+class _BehaviorDashboardScreenState extends State<BehaviorDashboardScreen> with BehaviorMonitorMixin {
   List<BehaviorData> _behaviorDataList = [];
   Map<int, RiskAssessment> _riskAssessments = {};
   bool _isLoading = true;
@@ -277,6 +278,67 @@ class _BehaviorDashboardScreenState extends State<BehaviorDashboardScreen> {
     }
   }
 
+  /// Test methods for risk simulation
+  Future<void> _testLowRisk() async {
+    try {
+      await _behaviorMonitor.testLowRiskScenario();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Low risk scenario triggered!'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error testing low risk: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _testMediumRisk() async {
+    try {
+      await _behaviorMonitor.testMediumRiskScenario();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Medium risk scenario triggered!'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error testing medium risk: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _testHighRisk() async {
+    try {
+      await _behaviorMonitor.testHighRiskScenario();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('High risk scenario triggered!'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error testing high risk: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   Widget _buildCloudStatusIndicator() {
     final isCloudAvailable = _behaviorMonitor.isCloudServiceAvailable;
     
@@ -443,6 +505,52 @@ class _BehaviorDashboardScreenState extends State<BehaviorDashboardScreen> {
                         onPressed: _clearData,
                         icon: const Icon(Icons.delete_forever),
                         label: const Text('Clear Data'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                // Test buttons for risk simulation
+                const Text(
+                  'Test Risk Scenarios',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _testLowRisk,
+                        icon: const Icon(Icons.check_circle),
+                        label: const Text('Low Risk'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _testMediumRisk,
+                        icon: const Icon(Icons.warning),
+                        label: const Text('Medium Risk'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _testHighRisk,
+                        icon: const Icon(Icons.dangerous),
+                        label: const Text('High Risk'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.red,
                           foregroundColor: Colors.white,

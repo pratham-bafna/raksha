@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:raksha/widgets/app_drawer.dart';
+import '../mixins/behavior_monitor_mixin.dart';
 
 class TransferScreen extends StatefulWidget {
   const TransferScreen({super.key});
@@ -8,7 +9,7 @@ class TransferScreen extends StatefulWidget {
   State<TransferScreen> createState() => _TransferScreenState();
 }
 
-class _TransferScreenState extends State<TransferScreen> {
+class _TransferScreenState extends State<TransferScreen> with BehaviorMonitorMixin {
   int _selectedIndex = 0;
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();

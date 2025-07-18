@@ -50,7 +50,10 @@ class _AddPayeeScreenState extends State<AddPayeeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Step 1 - Select Transfer Type', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                  const Text(
+                    'Step 1 - Select Transfer Type',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
                   const SizedBox(height: 12),
                   Container(
                     decoration: BoxDecoration(
@@ -61,48 +64,63 @@ class _AddPayeeScreenState extends State<AddPayeeScreen> {
                       ),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: ToggleButtons(
-                      isSelected: [
-                        _step1 == 0,
-                        _step1 == 1,
-                        _step1 == 2,
-                      ],
-                      onPressed: (index) {
-                        setState(() {
-                          _step1 = index;
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      selectedColor: Colors.white,
-                      fillColor: const Color(0xFF667EEA),
-                      color: Colors.black87,
-                      constraints: const BoxConstraints(minHeight: 48, minWidth: 110),
-                      children: const [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.account_balance, size: 20),
-                            SizedBox(width: 6),
-                            Text('Bank'),
-                          ],
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.credit_card, size: 20),
-                            SizedBox(width: 6),
-                            Text('Credit Card'),
-                          ],
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.phone_android, size: 20),
-                            SizedBox(width: 6),
-                            Text('Cardless'),
-                          ],
-                        ),
-                      ],
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: ToggleButtons(
+                        isSelected: [
+                          _step1 == 0,
+                          _step1 == 1,
+                          _step1 == 2,
+                        ],
+                        onPressed: (index) {
+                          setState(() {
+                            _step1 = index;
+                          });
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        selectedColor: Colors.white,
+                        fillColor: const Color(0xFF667EEA),
+                        color: Colors.black87,
+                        constraints: const BoxConstraints(minHeight: 48, minWidth: 100),
+                        children: const [
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 8),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.account_balance, size: 18),
+                                SizedBox(width: 4),
+                                Text('Bank', style: TextStyle(fontSize: 12)),
+                              ],
+                            ),
+                          ),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 8),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.credit_card, size: 18),
+                                SizedBox(width: 4),
+                                Text('Credit Card', style: TextStyle(fontSize: 12)),
+                              ],
+                            ),
+                          ),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 8),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.phone_android, size: 18),
+                                SizedBox(width: 4),
+                                Text('Cardless', style: TextStyle(fontSize: 12)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 28),

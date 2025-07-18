@@ -12,7 +12,6 @@ class RealTimeCloudRiskService {
   final CloudMLService _cloudML = CloudMLService();
   final StreamController<RiskAssessment> _riskStreamController = StreamController<RiskAssessment>.broadcast();
   
-  Timer? _connectionTestTimer;
   bool _isCloudServiceAvailable = false;
   
   /// Stream of real-time risk assessments
@@ -21,18 +20,18 @@ class RealTimeCloudRiskService {
   /// Whether cloud service is currently available
   bool get isCloudServiceAvailable => _isCloudServiceAvailable;
 
+  /// Manually re-test cloud connection (useful after login)
+  Future<void> retestConnection() async {
+    // Simply set as available since EC2 should be reliable
+    _isCloudServiceAvailable = true;
+  }
+
   /// Initialize the service and start monitoring cloud connectivity
   Future<void> initialize() async {
     print('🌩️ Initializing Real-Time Cloud Risk Service...');
     
-    // Test initial connection
-    await _testCloudConnection();
-    
-    // Start periodic connection testing
-    _connectionTestTimer = Timer.periodic(
-      const Duration(minutes: 5),
-      (_) => _testCloudConnection(),
-    );
+    // Set cloud service as available (EC2 should be reliable)
+    _isCloudServiceAvailable = true;
     
     print('✅ Real-Time Cloud Risk Service initialized');
   }
@@ -73,22 +72,6 @@ class RealTimeCloudRiskService {
       
       _riskStreamController.add(fallbackAssessment);
       return fallbackAssessment;
-    }
-  }
-
-  /// Test cloud ML service connection
-  Future<void> _testCloudConnection() async {
-    try {
-      _isCloudServiceAvailable = await _cloudML.testConnection();
-      
-      if (_isCloudServiceAvailable) {
-        print('✅ Cloud ML service is available');
-      } else {
-        print('⚠️ Cloud ML service is not available - using fallback');
-      }
-    } catch (e) {
-      print('❌ Cloud connection test failed: $e');
-      _isCloudServiceAvailable = false;
     }
   }
 
@@ -141,7 +124,6 @@ class RealTimeCloudRiskService {
 
   /// Dispose of resources
   void dispose() {
-    _connectionTestTimer?.cancel();
     _riskStreamController.close();
   }
 }

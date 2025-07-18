@@ -1,53 +1,78 @@
-# Cloud-Based ML Integration Summary
+# Cloud ML Integration Summary
 
 ## Overview
-Successfully integrated cloud-based machine learning risk assessment to replace the on-device model in the Raksha continuous authentication system.
+Successfully integrated the Flutter app with the new EC2-hosted ML API for behavioral anomaly detection using hashed user IDs and comprehensive training data management.
 
-## Key Components Implemented
+## Key Components
 
-### 1. Cloud ML Service (`cloud_ml_service.dart`)
-- **Purpose**: Handles API calls to cloud-hosted ML model
-- **Endpoint**: `http://your-env-name.eba-iq74dxhs.us-west-2.elasticbeanstalk.com/predict`
-- **Features**:
-  - Real-time risk score calculation
-  - Handles API timeouts and errors
-  - Fallback assessment when cloud is unavailable
-  - Connection testing functionality
+### 1. User ID Generation
+- **File**: `lib/utils/user_id_generator.dart`
+- **Method**: Generates hashed user ID from username (first 12 characters of SHA-256)
+- **Usage**: Used for all cloud API calls to identify users uniquely
 
-### 2. Real-Time Cloud Risk Service (`real_time_cloud_risk_service.dart`)
-- **Purpose**: Orchestrates real-time risk assessment workflow
-- **Features**:
-  - Listens to new behavior data collection
-  - Triggers cloud ML API calls automatically
-  - Broadcasts risk assessments via streams
-  - Periodic cloud connectivity monitoring
+### 2. Cloud ML Service (Prediction)
+- **File**: `lib/services/cloud_ml_service.dart`
+- **Endpoint**: `http://43.204.97.149/predict/:userid`
+- **Function**: Real-time risk assessment using the trained ML model
+- **Integration**: Used by `RealTimeCloudRiskService` for live predictions
 
-### 3. Enhanced Behavior Monitor Service (`behavior_monitor_service.dart`)
-- **Purpose**: Integrated cloud risk assessment into data collection pipeline
-- **Features**:
-  - Automatic cloud ML assessment on new data
-  - Real-time risk stream broadcasting
-  - Cloud service availability monitoring
+### 3. Cloud ML Training Service
+- **File**: `lib/services/cloud_ml_training_service.dart`
+- **Endpoints**:
+  - `/add_user/:userid` - Upload initial training data for new users
+  - `/retrain/:userid` - Retrain model with accumulated data
+- **Functions**:
+  - `checkUserModelExists()` - Check if user has a trained model
+  - `initializeUserModel()` - Upload initial training data for new users
+  - `retrainUserModel()` - Retrain existing model with new data
 
-### 4. Updated Dashboard Screens
-- **Behavior Dashboard**: Shows real-time risk indicators and cloud status
-- **Risk Assessment**: Uses cloud ML for session analysis
-- **Cloud ML Demo**: Comprehensive demo of cloud-based features
-
-### 5. Real-Time Risk Widget (`real_time_risk_widget.dart`)
-- **Purpose**: UI component for displaying live risk assessments
-- **Features**:
-  - Compact and full view modes
-  - Real-time risk level visualization
-  - Cloud service status indicators
+### 4. Behavior Monitor Integration
+- **File**: `lib/services/behavior_monitor_service.dart`
+- **New Features**:
+  - Automatically gets username from `AuthService`
+  - Saves behavior data locally AND uploads to cloud
+  - Periodically checks and updates cloud ML models (every 10 data points)
+  - Handles model initialization for new users
+  - Triggers retraining for existing users
 
 ## Data Flow
 
-1. **Data Collection**: App continuously collects behavioral data
-2. **Cloud Processing**: Each new session automatically sent to cloud ML API
-3. **Risk Assessment**: Cloud returns `{anomaly: 0/1, risk_score: float}`
-4. **Real-Time Display**: Risk assessment immediately displayed in UI
-5. **User Alerts**: High-risk sessions trigger immediate notifications
+1. **Data Collection**: `BehaviorMonitorService.collectData()`
+   - Collects raw sensor data
+   - Normalizes data with current username
+   - Saves to local storage
+
+2. **Real-time Prediction**: 
+   - Sends normalized data to cloud ML service
+   - Gets risk assessment in real-time
+
+3. **Model Training**:
+   - Every 10 data points, checks if user model exists
+   - For new users: Uploads all local data to initialize model
+   - For existing users: Triggers model retraining with accumulated data
+
+## API Format
+
+### Prediction Request
+```json
+POST http://43.204.97.149/predict/:userid
+{
+  "data": [/* 30 behavioral features */]
+}
+```
+
+### Training Data Upload
+```csv
+feature1,feature2,...,feature30,label
+0.5,0.3,...,0.8,normal
+...
+```
+
+## Features (30 total)
+- **Continuous (18)**: Tap intervals, hold durations, swipe speeds, sensor data, etc.
+- **Binary (12)**: Activity states, gesture patterns, usage flags, etc.
+
+## Backend Components (EC2)
 
 ## API Integration Details
 

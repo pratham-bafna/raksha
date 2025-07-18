@@ -3,6 +3,7 @@ import 'package:raksha/widgets/app_drawer.dart';
 import 'package:raksha/models/transaction.dart';
 import 'package:raksha/services/user_data_service.dart';
 import 'package:raksha/services/auth_service.dart';
+import '../mixins/behavior_monitor_mixin.dart';
 
 class TransactionsScreen extends StatefulWidget {
   const TransactionsScreen({super.key});
@@ -11,7 +12,7 @@ class TransactionsScreen extends StatefulWidget {
   State<TransactionsScreen> createState() => _TransactionsScreenState();
 }
 
-class _TransactionsScreenState extends State<TransactionsScreen> {
+class _TransactionsScreenState extends State<TransactionsScreen> with BehaviorMonitorMixin {
   String _selectedFilter = 'All';
   final _searchController = TextEditingController();
   List<Transaction> _filteredTransactions = [];

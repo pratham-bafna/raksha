@@ -12,7 +12,6 @@ import 'package:raksha/screens/safe_deposit_lockers_screen.dart';
 import 'package:raksha/screens/upi_payment/upi_payment_screen.dart';
 import 'package:raksha/screens/behavior_dashboard_screen.dart';
 import 'package:raksha/screens/risk_assessment_screen.dart';
-import 'package:raksha/screens/ml_test_screen.dart';
 import 'package:raksha/services/auth_service.dart';
 import 'package:raksha/models/user.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -115,7 +114,6 @@ class MyApp extends StatelessWidget {
             '/upi_payment': (context) => const UPIPaymentScreen(),
             '/behavior_dashboard': (context) => const BehaviorDashboardScreen(),
             '/risk_assessment': (context) => const RiskAssessmentScreen(),
-            '/ml_test': (context) => const MLTestScreen(),
           },
         ),
       ),

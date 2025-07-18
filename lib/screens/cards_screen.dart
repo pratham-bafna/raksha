@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:raksha/widgets/app_drawer.dart';
+import '../mixins/behavior_monitor_mixin.dart';
 
-class CardsScreen extends StatelessWidget {
+class CardsScreen extends StatefulWidget {
   const CardsScreen({super.key});
 
+  @override
+  State<CardsScreen> createState() => _CardsScreenState();
+}
+
+class _CardsScreenState extends State<CardsScreen> with BehaviorMonitorMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
