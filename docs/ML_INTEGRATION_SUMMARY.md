@@ -213,5 +213,3 @@ Risk Level:
 ---
 
 **Raksha Chakra** - *Protecting digital banking through intelligent behavioral analysis*
-
-*Built for [Hackathon Name] - Continuous Authentication Challenge*
