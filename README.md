@@ -205,6 +205,4 @@ Our hackathon solution prioritizes user privacy while delivering maximum securit
 
 **Hackathon Theme: Enhancing Mobile Banking Security Using Behavior-Based Continuous Authentication**  
 *Submitted by: Team Raksha*
-#   r a k s h a 
- 
- 
+#
